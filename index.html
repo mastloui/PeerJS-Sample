@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<head>
+    <script src="src/js/utility.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/peerjs@0.3.20/dist/peer.min.js"></script>
+    <script>
+        
+        writeToElement = function (id, msg){
+            console.log(msg);
+            document.getElementById(id).textContent = msg;
+        }
+
+        setupPeerConnection = function(dataConnection){
+            dataConnection.on('open', function(){
+                console.log("Connected to peer '" + dataConnection.id + "'");
+            })
+            
+            dataConnection.on('error', function(err){
+                console.log("Error in peer connection.");
+                console.log(err);
+            })
+
+            dataConnection.on('close', function(){
+               console.log("Connection to peer closed.") 
+            });
+
+            dataConnection.on('data', function(data) {
+                console.log('Received', data);
+                document.getElementById("MessageDisplay").value = data;
+            });
+        }
+
+        setupBrokerConnection = function(peer){
+            // Executes when connection is opened with the broker server.
+            peer.on('open', function(id) {
+                console.log('My peer ID is: ' + id);
+                writeToElement("BrokerServerConnectionNotice", "Connected to broker server.");
+            });
+
+            peer.on('disconnected', function() {
+                writeToElement("BrokerServerConnectionNotice", "Disconnected from broker server.");
+
+            });
+            
+            peer.on('error', function(err){
+                writeToElement("BrokerServerConnectionNotice", "Error in broker server connection.");
+                console.log(err)
+            });
+
+            peer.on('connection', function(dataConnection){
+                console.log("Received connection request from peer '" + dataConnection.id + "'");
+                writeToElement("PeerConnectionNotice", "Received connection request from peer '" + dataConnection.id + "'");
+                conn = dataConnection;
+                setupPeerConnection(conn);
+            });
+        }
+
+        var conn;
+        var peer;
+        window.onload = () => {
+            // Create a GUID for as the peer ID.
+            peerJsId = utility.createGuid();
+            writeToElement("PeerJsId", peerJsId);
+            peer = new Peer(id = peerJsId, options = {key: 'lwjd5qra8257b9'});
+            writeToElement("BrokerServerConnectionNotice", "Connected to");
+
+            setupBrokerConnection(peer);
+
+        };
+
+        onConnectBtnClick = function()
+        {
+            if(conn){
+                return;
+            }
+            peerId = document.getElementById("PeerIdInputTextbox").value
+            conn = peer.connect(peerId);
+
+            writeToElement("PeerConnectionNotice", "Opened connection to peer '" + peerId + "'");
+            // Receive messages
+            // Executes whenver the underlying connection receives data.
+            setupPeerConnection(conn);
+
+        }
+        
+        onSendMessageBtnClick = function(){
+
+            msg = document.getElementById("OutboundMessageTextbox").value;
+            conn.send(msg);
+            console.log("Sending Message: " + msg);
+        }
+
+
+    </script>
+</head>
+<body>
+    <h1>ID: <span id="PeerJsId"></span></h1>
+    <h2 id="BrokerServerConnectionNotice">Disconnected from broker server</h2>
+    <h2 id="PeerConnectionNotice">Disconnected from peer</h2>
+    <div>
+        <input id="PeerIdInputTextbox" type="text" placeholder="Enter Peer ID here!"/>
+        <input type="button" value="Connect" onclick="onConnectBtnClick()"></input>
+    </div>
+
+    <div>
+        <p/>
+        <input id="OutboundMessageTextbox" type="text" placeholder="Enter message here.."/>
+        <input type="button" value="Send" onclick="onSendMessageBtnClick()"></input>
+    </div>
+
+    <div>
+        <p>Message Received:</p>
+        <input type="text" readonly="true" id="MessageDisplay"/>
+    </div>
+
+</body>
